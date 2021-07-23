@@ -3,8 +3,12 @@
   hosts: all
   vars:
     tomcat_version: 8.5.69
-    tomcat_url: "https://downloads.apache.org/tomcat/tomcat-{{tomcat_version.split('.')[0]}}/v{{tomcat_version}}/bin/apache-tomcat-{{tomcat_version}}.tar.gz"
+    tomcat_url: "https://downloads.apache.org/tomcat/tomcat-{{ tomcat_version.split('.')[0] }}/v{{ tomcat_version }}/bin/apache-tomcat-{{ tomcat_version }}.tar.gz"
     tomcat_dir: /usr/local
+
+    jenkins_version: 2.289.2
+    jenkins_url: "https://get.jenkins.io/war-stable/{{ jenkins_version }}/jenkins.war"
+
   become: true
 
   tasks:
@@ -20,17 +24,20 @@
         
     - name: Downloading Tomcat
       get_url: 
-        url: "{{tomcat_url}}"
-        dest: "{{tomcat_dir}}"
+        url: "{{ tomcat_url }}"
+        dest: "{{ tomcat_dir }}"
 
     - name: Extracting Tomcat
       unarchive:
-        src: "{{tomcat_dir}}/apache-tomcat-{{tomcat_version}}.tar.gz"
-        dest: "{{tomcat_dir}}"
+        src: "{{ tomcat_dir }}/apache-tomcat-{{ tomcat_version }}.tar.gz"
+        dest: "{{ tomcat_dir }}"
         remote_src: yes
       
     - name: Renaming Tomcat Home
-      command: mv {{tomcat_dir}}/apache-tomcat-{{tomcat_version}} {{tomcat_dir}}/tomcat
+      command: mv {{ tomcat_dir }}/apache-tomcat-{{ tomcat_version }} {{ tomcat_dir }}/tomcat
+
+    - name: Deleting Tomcat Archive
+      command: rm -rf {{ tomcat_dir }}/apache-tomcat-{{ tomcat_version }}.tar.gz
     
     # - name: Starting Tomcat
     #   shell: nohup {{tomcat_dir}}/tomcat/bin/startup.sh &
@@ -52,12 +59,20 @@
       ansible.builtin.systemd:
         state: stopped
         daemon_reload: yes
-        name: tomcat
+        name: tomcat.service
     
-    # - name: Start service tomcat 
-    #   ansible.builtin.systemd:
-    #     state: started
-    #     name: tomcat
+    - name: Archiving Tomcat files to backup file
+      shell: tar -zcf {{ tomcat_dir }}/apache-tomcat-{{ tomcat_version }}-backup.tar.gz {{ tomcat_dir }}/tomcat/
+
+    - name: Downloading Jenkins War File
+      get_url:
+        url: "{{ jenkins_url }}"
+        dest: "{{ tomcat_dir }}/tomcat/webapps/"
+
+    - name: Start service tomcat 
+      ansible.builtin.systemd:
+        state: started
+        name: tomcat.service
 
     
 
